@@ -1,0 +1,3 @@
+# Demonstrates a semantic error: the upper bound is below the lower bound
+pattern broken:
+  5 to 2 digit

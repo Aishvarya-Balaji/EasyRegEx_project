@@ -1,0 +1,5 @@
+# Demonstrates a semantic error: 'domain' is never defined
+pattern email:
+  one or more letter
+  then "@"
+  then use domain

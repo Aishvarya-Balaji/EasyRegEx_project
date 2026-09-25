@@ -1,0 +1,3 @@
+# Demonstrates a syntax error: the colon after the pattern name is missing
+pattern broken
+  one or more digit

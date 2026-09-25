@@ -1,0 +1,8 @@
+# Demonstrates a semantic error: a refers to b, and b refers back to a
+pattern a:
+  "x"
+  then use b
+
+pattern b:
+  "y"
+  then use a

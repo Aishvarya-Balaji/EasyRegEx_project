@@ -1,0 +1,4 @@
+# Demonstrates a lexical error: $ is not a valid character
+pattern broken:
+  one or more digit
+  then $

@@ -1,0 +1,26 @@
+# Demonstrates named pattern references with "use".
+# A pattern defined once can be reused inside other patterns.
+
+pattern scheme:
+  ("http" or "https")
+
+pattern domain:
+  one or more letter_or_digit
+  then "."
+  then ("com" or "org" or "in")
+
+pattern url:
+  use scheme
+  then "://"
+  then use domain
+  then optional "/"
+
+test url:
+  match "http://example.com"
+  match "https://college.in/"
+  reject "ftp://example.com"
+  reject "http//example.com"
+
+test domain:
+  match "example.com"
+  reject "example.net"

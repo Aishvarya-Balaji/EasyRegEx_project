@@ -1,0 +1,15 @@
+# Validates a basic email address
+pattern email:
+  one or more letter_or_digit
+  then "@"
+  one or more letter
+  then "."
+  then ("com" or "org" or "in")
+
+test email:
+  match "alice@example.com"
+  match "bob123@site.org"
+  match "user@college.in"
+  reject "no-at-sign.com"
+  reject "double@@site.com"
+  reject "trailing@site.net"

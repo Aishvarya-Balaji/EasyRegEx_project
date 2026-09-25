@@ -1,0 +1,215 @@
+tokens.py
+Token definitions for the EasyRegEx DSL.
+
+Every token produced by the lexer carries: which kind of token it is
+(TokenType), the exact text matched, and where it was found in the
+source file (line, column) so later phases and error messages can point
+back to the original .rx file.
+
+
+lexer.py
+Lexical analyzer for the EasyRegEx DSL.
+
+Converts raw .rx source text into a flat list of Token objects that the
+parser consumes. Implemented with a single master regular expression
+built from named groups -- each source position is matched against every
+candidate token pattern at once, and the first group that matches wins.
+
+parser.py
+Syntax analyzer (parser) for EasyRegEx.
+
+A hand-written recursive-descent parser: there is one function per
+grammar rule, and the call structure of those functions mirrors the
+grammar itself. It consumes the token stream produced by the lexer and
+builds an Abstract Syntax Tree.
+
+Grammar (BNF):
+
+    program      ::= { pattern_def | test_block }
+    pattern_def  ::= "pattern" IDENT ":" body
+    body         ::= { [ "then" ] term }
+    term         ::= quantified | atom
+    quantified   ::= "one" "or" "more" atom
+                   | "zero" "or" "more" atom
+                   | "optional" atom
+                   | "exactly" NUMBER atom
+                   | NUMBER "to" NUMBER atom
+    atom         ::= STRING
+                   | CLASS
+                   | "use" IDENT
+                   | "(" alternative { "or" alternative } ")"
+    alternative  ::= term { [ "then" ] term }
+    test_block   ::= "test" IDENT ":" { test_case }
+    test_case    ::= ( "match" | "reject" ) STRING
+
+A pattern body runs until the next "pattern" or "test" keyword, or the
+end of the file. Newlines separate rules but are otherwise insignificant,
+and the keyword "then" is optional sugar that improves readability.
+
+semantic.py
+Semantic analyzer for EasyRegEx.
+
+A program can be grammatically correct and still be meaningless. This
+phase walks the AST and checks the things the grammar cannot express:
+
+  1. Duplicate pattern names.
+  2. References (`use X`) to patterns that were never defined.
+  3. Circular references, direct (a uses a) or indirect (a uses b uses a).
+     These must be rejected because code generation inlines references,
+     so a cycle would never terminate.
+  4. Invalid quantifier ranges, such as `5 to 2` or `exactly 0`.
+  5. Test blocks that refer to an undefined pattern.
+
+All errors found are collected rather than raised one at a time, so the
+user sees every problem in a single run, the way a real compiler reports
+diagnostics.
+
+
+ast_nodes.py
+Abstract Syntax Tree node types for EasyRegEx.
+
+The AST is the intermediate representation of the compiler: the parser
+builds it from the token stream, the semantic analyzer validates it, the
+optimizer simplifies it, and the code generator walks it to emit a
+regular expression.
+
+Node hierarchy:
+
+    Program
+      +-- PatternDef        pattern email: ...
+      |     +-- Sequence    the body: one item after another
+      |           +-- Literal        "@"
+      |           +-- CharClass      digit
+      |           +-- Reference      use domain
+      |           +-- Group          ("com" or "org")
+      |           +-- Quantified     one or more <inner>
+      +-- TestBlock         test email: ...
+            +-- TestCase    match "a@b.com"
+
+codegen.py
+Code generator for EasyRegEx.
+
+Walks the validated AST and emits a standard regular expression, using
+Python's `re` syntax as the target language. Each node type has one
+translation rule, and fragments are composed bottom-up into the final
+expression.
+
+Translation rules:
+
+    Literal("a.b")        ->  a\\.b          (metacharacters escaped)
+    CharClass(digit)      ->  [0-9]
+    CharClass(letter)     ->  [a-zA-Z]
+    Group(A, B)           ->  (?:A|B)
+    Quantified(X, 1, inf) ->  X+
+    Quantified(X, 0, inf) ->  X*
+    Quantified(X, 0, 1)   ->  X?
+    Quantified(X, n, n)   ->  X{n}
+    Quantified(X, n, m)   ->  X{n,m}
+    Reference(name)       ->  the generated regex of that pattern, inlined
+    Sequence(A, B, C)     ->  ABC
+
+The whole pattern is anchored with ^ and $ so that a match means the
+entire input string conforms, which is what a validation rule implies.
+
+An important detail is grouping. A quantifier binds to a single element,
+so a multi-character fragment must be wrapped in a non-capturing group
+before a quantifier is attached: "ab" repeated is (?:ab)+, not ab+, which
+would only repeat the b. Each translation therefore returns both the
+regex text and whether that text is atomic (safe to quantify as-is).
+
+optimizer.py
+Optimizer for EasyRegEx.
+
+Runs over the AST after semantic analysis and before code generation,
+rewriting it into an equivalent but simpler tree. A smaller tree produces
+a shorter regular expression without changing which strings it matches.
+
+Optimizations implemented:
+
+  1. Constant folding of literals
+        "a" "b" "c"            ->  "abc"
+     Adjacent literals in a sequence are merged into one.
+
+  2. Sequence flattening
+        Sequence[Sequence[a, b], c]  ->  Sequence[a, b, c]
+
+  3. Redundant group elimination
+        (X)                    ->  X
+     A group with only one alternative is not a choice at all.
+
+  4. Redundant quantifier elimination
+        exactly 1 X            ->  X
+
+  5. Single-element sequence unwrapping
+        Sequence[X]            ->  X
+
+Each pass records how many rewrites it performed, so the effect of
+optimization can be reported and measured.
+
+testrunner.py
+Test runner for EasyRegEx.
+
+The final stage of the pipeline. It takes the regular expressions
+produced by the code generator and the expectations declared in the
+program's `test` blocks, runs each sample string against the matching
+pattern, and reports whether the result was what the author said it
+should be.
+
+This is what turns the compiler from something that merely produces
+output into something that can prove its output is correct.
+
+errors.py
+Error types shared by every phase of the EasyRegEx compiler.
+
+All compiler errors carry the line and column at which the problem was
+found, so the message can point the user back to the exact position in
+the .rx source file.
+
+compiler.py
+Compiler driver for EasyRegEx.
+
+Runs the phases in order and collects the artefact each one produces, so
+that the command-line interface (and any other front end) can inspect
+the result of any individual stage.
+
+main.py
+Command-line interface for the EasyRegEx compiler.
+
+Usage:
+    python main.py <file.rx> [options]
+
+Options:
+    --tokens        show the token stream produced by the lexer
+    --ast           show the abstract syntax tree built by the parser
+    --symbols       show the symbol table built by the semantic analyzer
+    --regex         show the generated regular expressions (default)
+    --test          run the test cases declared in the file
+    --all           show every stage of the pipeline
+    --no-optimize   skip the optimizer, to compare its effect
+    --match STR     test one string against every generated pattern
+
+With no options, the generated regular expressions are printed and any
+declared test cases are run.
+
+
+
+
+app.py
+Optional web interface for the EasyRegEx compiler.
+
+Run with:
+    pip install flask
+    python app.py
+
+then open http://127.0.0.1:5000 in a browser.
+
+The page lets you type EasyRegEx source on the left and see every stage
+of the compiler on the right: the token stream, the abstract syntax tree,
+the generated regular expression, and the result of the declared test
+cases. A separate box lets you try any string against the compiled
+patterns without editing the source.
+
+This is a thin front end: all the work is done by the same compiler
+package that the command-line tool uses.
+
+

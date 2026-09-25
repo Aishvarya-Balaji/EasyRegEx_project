@@ -1,0 +1,24 @@
+# A C-style identifier: a letter or underscore, then any number of
+# letters, digits or underscores. Shows zero-or-more and optional.
+
+pattern identifier:
+  (letter or "_")
+  then zero or more (letter or digit or "_")
+
+pattern signed_number:
+  optional ("-" or "+")
+  then one or more digit
+  then optional ("." then one or more digit)
+
+test identifier:
+  match "x"
+  match "_private"
+  match "total_count_2"
+  reject "2fast"
+
+test signed_number:
+  match "42"
+  match "-3.14"
+  match "+7"
+  reject "abc"
+  reject "1.2.3"

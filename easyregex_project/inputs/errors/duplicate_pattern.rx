@@ -1,0 +1,6 @@
+# Demonstrates a semantic error: the same name is defined twice
+pattern code:
+  exactly 3 digit
+
+pattern code:
+  exactly 4 letter

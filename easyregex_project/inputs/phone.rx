@@ -1,0 +1,11 @@
+# Validates a phone number written as 123-4567
+pattern phone:
+  exactly 3 digit
+  then "-"
+  exactly 4 digit
+
+test phone:
+  match "555-1234"
+  reject "5551234"
+  reject "55-1234"
+  reject "555-12345"

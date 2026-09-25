@@ -1,0 +1,16 @@
+# Validates a date written as DD-MM-YYYY or DD/MM/YYYY
+pattern separator:
+  ("-" or "/")
+
+pattern date:
+  exactly 2 digit
+  then use separator
+  then exactly 2 digit
+  then use separator
+  then exactly 4 digit
+
+test date:
+  match "18-09-2026"
+  match "01/01/2000"
+  reject "2026-09-18"
+  reject "18-09-26"

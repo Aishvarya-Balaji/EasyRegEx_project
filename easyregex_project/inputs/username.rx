@@ -1,0 +1,10 @@
+# Starts with a letter, then 2 to 15 letters, digits or underscores
+pattern username:
+  letter
+  then 2 to 15 (letter or digit or "_")
+
+test username:
+  match "aish_b"
+  match "user123"
+  reject "1user"
+  reject "ab"
