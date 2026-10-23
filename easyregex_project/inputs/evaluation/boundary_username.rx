@@ -1,0 +1,15 @@
+# Boundary tests for a repeat range.
+# A username is a letter followed by 2 to 15 letters, digits or underscores,
+# so its total length must be between 3 and 16 characters.
+pattern username:
+  letter
+  then 2 to 15 (letter or digit or "_")
+
+test username:
+  match "abc"
+  match "a1_"
+  match "aaaaaaaaaaaaaaaa"
+  reject "ab"
+  reject "aaaaaaaaaaaaaaaaa"
+  reject "1abc"
+  reject ""

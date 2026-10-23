@@ -1,0 +1,25 @@
+# Complex input: patterns built from patterns built from patterns.
+# stamp uses time, and both use digits2 (a three-level reference chain).
+pattern digits2:
+  exactly 2 digit
+
+pattern time:
+  use digits2
+  then ":"
+  then use digits2
+
+pattern stamp:
+  exactly 4 digit
+  then "-"
+  then use digits2
+  then "-"
+  then use digits2
+  then " "
+  then use time
+
+test stamp:
+  match "2026-10-17 14:30"
+  match "1999-01-01 00:00"
+  reject "2026-10-17 14-30"
+  reject "26-10-17 14:30"
+  reject "2026-10-17 14:30:59"

@@ -1,0 +1,26 @@
+# Boundary tests for equal bounds, zero-or-more (empty string) and optional.
+pattern exact_three:
+  3 to 3 digit
+
+pattern any_digits:
+  zero or more digit
+
+pattern signed_digits:
+  optional "-"
+  then one or more digit
+
+test exact_three:
+  match "123"
+  reject "12"
+  reject "1234"
+
+test any_digits:
+  match ""
+  match "0"
+  reject "x"
+
+test signed_digits:
+  match "5"
+  match "-5"
+  reject "--5"
+  reject "-"
